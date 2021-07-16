@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() {
-	
-}
+#include <file.h>
 
-void writeHeader() {
+int main() {
+	struct startingFiles startingFiles;
+	
+	loadFiles(&startingFiles);
 	
 }
