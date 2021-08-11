@@ -5,7 +5,7 @@
 #define FAILED_EXIT_STRING  "[Terminating]"
 #define SUCCESS_EXIT_STRING "[Success]\n"
 
-#define DATA_SECTION_OFFSET 57
+#define DATA_SECTION_OFFSET 55
 
 /* args
 name of file to create
@@ -16,7 +16,7 @@ string to put inside of file (optional)
 	http://merthsoft.com/linkguide/ti83+/fformat.html
 */
 
-FILE *createFile(const char *name);
+void createFile(const char *name);
 void writeHeader(FILE *filePointer);
 void writeDataSection(FILE *filePointer);
 
@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
 	strcpy(newFileName, argv[1]);
 	strcpy(newFileName+strlen(argv[1]), ".8xv");
 	
-//	createFile(newFileName);
+	createFile(newFileName);
 	
 	printf("%s %s %s", "File", newFileName, "created.\n");
 	printf(SUCCESS_EXIT_STRING);
@@ -44,36 +44,40 @@ int main(int argc, char *argv[]) {
 	
 }
 
-FILE *createFile(const char *name)
+void createFile(const char *name)
 {
 	FILE *filePointer = fopen(name, "w+");
 	
 	writeHeader(filePointer);
 	writeDataSection(filePointer);
 	
-	return filePointer;
+	fclose(filePointer);
+	
+	return;
 }
 
 void writeHeader(FILE *filePointer)
 {
-	const char *fileHeader = "**TI83F*";
-	unsigned int fileSignature = 0x1A0A00;
 	const char *fileComment = "Created by RandomGuy's file converter   ";
 	
-	fseek(filePointer, 0, SEEK_SET);
-	fwrite(fileHeader, strlen(fileHeader), 1, filePointer);
-	
-	fseek(filePointer, 8, SEEK_SET);
-	fwrite(&fileSignature, 3, 1, filePointer);
-	
-	fseek(filePointer, 11, SEEK_SET);
-	fwrite(fileComment, strlen(fileComment), 1, filePointer);
+	fwrite("**TI83F*\x1A\x0A", 11, 1, filePointer);
+	fwrite(fileComment, 42, 1, filePointer);
 	
 	return;
 }
 
 void writeDataSection(FILE *filePointer)
 {
-	fseek(filePointer, DATA_SECTION_OFFSET, SEEK_SET);
+	uint16_t num = 11;
+	uint16_t dataLen = 10;
+	char variableTypeID = 0x15;
 	
+	fseek(filePointer, DATA_SECTION_OFFSET, SEEK_SET);
+	fwrite(&num, 2, 1, filePointer);
+	fwrite(&dataLen, 2, 1, filePointer);
+	fwrite(&variableTypeID, 1, 1, filePointer);
+	fwrite("MainData", 8, 1, filePointer);
+	
+	
+	return;
 }
