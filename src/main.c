@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
 	{
 		if(argc <=1 )
 		{
-			
+			printf("Error: No args inputted\n%s\n", argString);
 		}
 		
 		if(argv[i][0] == '-' && argv[i][1] == 'n')
