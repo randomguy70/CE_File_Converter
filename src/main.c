@@ -70,6 +70,7 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
+/*
 int writeAppvar(struct appvar *appvar, FILE *fptr)
 {
 	int writePos = 0;
@@ -79,6 +80,9 @@ int writeAppvar(struct appvar *appvar, FILE *fptr)
 	static const uint8_t header[APPVAR_HEADER_SIZE] = {0x2A,0x2A,0x54,0x49,0x38,0x33,0x46,0x2A,0x1A,0x0A,0x00};
 	const char *comment = "Outputted by randomguy's file converter  ";
 	uint16_t dataLen = appvar->data_len;
+	const uint16_t variableHeader = 11;
+	uint16_t variableDataLen;
+	uint8_t variableIDType = APPVAR_TYPE_FLAG;
 	uint16_t checkSum;
 	
 	
@@ -94,19 +98,82 @@ int writeAppvar(struct appvar *appvar, FILE *fptr)
 	}
 	writePos += APPVAR_COMMENT_SIZE;
 	
+	output[writePos++] = appvar->data_len && 0xff;
+	output[writePos++] = appvar->data_len && 0xff;
 	
+	// data section, consists of 1 variable entry
+	output[writePos++] = variableHeader && 0xff;
+	output[writePos++] = variableHeader && 0xff;
+}
+*/
+
+/* thank you, Mateo! */
+int appvar_write(struct appvar *a, FILE *fdv)
+{
+	unsigned int checksum;
+	static const uint8_t file_header[11] =
+		{ 0x2A,0x2A,0x54,0x49,0x38,0x33,0x46,0x2A,0x1A,0x0A,0x00 };
+	
+	static uint8_t output[APPVAR_MAX_FILE_SIZE];
+	size_t name_size;
+	size_t file_size;
+	size_t data_size;
+	size_t varb_size;
+	size_t var_size;
+	size_t size;
+	
+   size = a->size;
+	
+	if (a->size > APPVAR_MAX_DATA_SIZE)
+	{
+		LOG_ERROR("Too much data for AppVar \'%s\'.\n", a->name);
+			return -1;
+	}
+	
+	file_size = a->size + APPVAR_DATA_POS + APPVAR_CHECKSUM_LEN;
+	data_size = a->size + APPVAR_VAR_HEADER_LEN + APPVAR_VARB_SIZE_LEN;
+	var_size = a->size + APPVAR_VARB_SIZE_LEN;
+	varb_size = a->size;
+
+	name_size = strlen(a->name) > 8 ? 8 : strlen(a->name);
+
+	memcpy(output + APPVAR_FILE_HEADER_POS, file_header, sizeof file_header);
+	memcpy(output + APPVAR_NAME_POS, a->name, name_size);
+	memcpy(output + APPVAR_DATA_POS, a->data, varb_size);
+	
+	output[APPVAR_VAR_HEADER_POS] = APPVAR_MAGIC;
+	output[APPVAR_TYPE_POS] = APPVAR_TYPE_FLAG;
+	output[APPVAR_ARCHIVE_POS] = APPVAR_ARCHIVE_FLAG;
+
+	output[APPVAR_DATA_SIZE_POS + 0] = (data_size >> 0) & 0xff;
+	output[APPVAR_DATA_SIZE_POS + 1] = (data_size >> 8) & 0xff;
+
+	output[APPVAR_VARB_SIZE_POS + 0] = (varb_size >> 0) & 0xff;
+	output[APPVAR_VARB_SIZE_POS + 1] = (varb_size >> 8) & 0xff;
+
+	output[APPVAR_VAR_SIZE0_POS + 0] = (var_size >> 0) & 0xff;
+	output[APPVAR_VAR_SIZE0_POS + 1] = (var_size >> 8) & 0xff;
+	output[APPVAR_VAR_SIZE1_POS + 0] = (var_size >> 0) & 0xff;
+	output[APPVAR_VAR_SIZE1_POS + 1] = (var_size >> 8) & 0xff;
+
+	checksum = appvar_checksum(output, data_size);
+
+	output[APPVAR_DATA_POS + varb_size + 0] = (checksum >> 0) & 0xff;
+	output[APPVAR_DATA_POS + varb_size + 1] = (checksum >> 8) & 0xff;
+
+	return fwrite(output, file_size, 1, fdv) == 1 ? 0 : -1;
 }
 
 unsigned int appvar_checksum(uint8_t *arr, size_t size)
 {
-    uint16_t checksum = 0;
-    size_t i;
+	uint16_t checksum = 0;
+	size_t i;
 	
-    for (i = 0; i < size; ++i)
-    {
-        checksum += arr[APPVAR_VAR_HEADER_POS + i];
-        checksum &= 0xffff;
-    }
-
-    return checksum;
+	for (i = 0; i < size; ++i)
+	{
+		checksum += arr[APPVAR_VAR_HEADER_POS + i];
+		checksum &= 0xffff;
+	}
+	
+	return checksum;
 }
